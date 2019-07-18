@@ -16,34 +16,34 @@
 ; Models
 (defmodel Employee :employee)
 
+; Defaults
+(def default-headers {:status 200
+                      :headers {"Content-Type" "text/json"}})
+
 ; Helpers
 (defn response-data [body]
   str (json/write-str {"data" body}))
 
 (defn response-ok [body]
-  {:status 200
-   :headers {"Content-Type" "text/json"}
-   :body    (response-data body)})
+  (merge default-headers {:body (response-data body)}))
 
 (defn response-created [body]
-  {:status 201
-   :headers {"Content-Type" "text/json"}
-   :body    (response-data body)})
+  (merge default-headers {:status 201
+                          :body   (response-data body)}))
 
 (defn response-bad-request [body]
-  {:status 400
-   :headers {"Content-Type" "text/json"}
-   :body    (response-data body)})
+  (merge default-headers {:status 400
+                          :body   (response-data body)}))
 
 (defn response-not-found [body]
-  {:status 404
-   :headers {"Content-Type" "text/json"}
-   :body    (response-data body)})
+  (merge default-headers {:status 404
+                          :body   (response-data body)}))
 
 ; Routes
 (defn list-employees-route [req]
-  (let [employees (db/select Employee)]
-    (response-ok employees)))
+  (->>
+    (db/select Employee)
+    (response-ok)))
 
 (defn detail-employee-route [req]
   (let [employee (->>
@@ -56,27 +56,27 @@
       (response-not-found "Employee not found"))))
 
 (defn delete-employee-route [req]
-  (let [status (db/simple-delete! Employee :email (:email (:route-params req)))]
-    (if status
-      (response-ok "deleted")
-      (response-not-found "employee not found"))))
+  (if (->>
+        (:route-params req)
+        (:email)
+        (db/simple-delete! Employee :email))
+    (response-ok "deleted")
+    (response-not-found "employee not found")))
 
 (defn create-employee-route [req]
-  (let [employee (->>
-    (:form-params req)
-    (keywordize-keys)
-    (:email)
-    (db/select Employee :email)
-    (first)
-  )]
-    (if employee
-      (response-bad-request "Employee already exists")
-      (do
-        (->>
-          (:form-params req)
-          (keywordize-keys)
-          (db/insert! Employee))
-        (response-ok "created")))))
+  (if (->>
+        (:form-params req)
+        (keywordize-keys)
+        (:email)
+        (db/select Employee :email)
+        (first))
+    (response-bad-request "Employee already exists")
+    (do
+      (->>
+        (:form-params req)
+        (keywordize-keys)
+        (db/insert! Employee))
+      (response-created "created"))))
 
 (defroutes app-routes
   (GET "/employees" [] list-employees-route)
