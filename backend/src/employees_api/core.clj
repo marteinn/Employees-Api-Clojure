@@ -17,12 +17,15 @@
 (defmodel Employee :employee)
 
 ; Defaults
+(def cors-headers {"Access-Control-Allow-Origin" "*"
+                   "Access-Control-Allow-Methods" "GET,POST,OPTIONS"})
+
 (def default-headers {:status 200
-                      :headers {"Content-Type" "text/json"}})
+                      :headers (merge {"Content-Type" "application/json"} cors-headers)})
 
 ; Helpers
 (defn response-data [body]
-  str (json/write-str {"data" body}))
+  (str (json/write-str {"data" body})))
 
 (defn response-ok [body]
   (merge default-headers {:body (response-data body)}))
